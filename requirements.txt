@@ -2,3 +2,4 @@ requests==2.31.0
 pycairo==1.23.0
 pmtiles
 sqlitedict==2.1.0
+geotiler==0.14.7
