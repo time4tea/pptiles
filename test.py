@@ -1,19 +1,91 @@
-import base64
+import colorsys
 import dataclasses
 import gzip
 import json
 from collections import defaultdict
 from functools import cached_property
+from typing import Tuple, Set
 
+import cairo
 import requests
+from PIL import Image
 from geotiler import Map
 from geotiler.geo import WebMercator
 from geotiler.map import _find_top_left_tile, _tile_coords, _tile_offsets
 from geotiler.provider import MapProvider
 from mapbox_vector_tile.decoder import TileData
-from pmtiles.reader import Reader
 from pmtiles.tile import deserialize_header, Compression, zxy_to_tileid, deserialize_directory, find_tile
 from sqlitedict import SqliteDict
+
+
+@dataclasses.dataclass(frozen=True)
+class HLSColour:
+    h: float
+    l: float
+    s: float
+    a: float
+
+    def lighten(self, by: float) -> 'HLSColour':
+        return HLSColour(self.h, min(self.l + by, 1.0), self.s, self.a)
+
+    def darken(self, by: float) -> 'HLSColour':
+        return HLSColour(self.h, max(self.l - by, 0.0), self.s, self.a)
+
+    def rgb(self) -> 'Colour':
+        r, g, b = colorsys.hls_to_rgb(self.h, self.l, self.s)
+        return Colour(r, g, b, self.a)
+
+    def apply_to(self, context: cairo.Context):
+        self.rgb().apply_to(context)
+
+
+def hsl(h, s, l, a=1.0) -> HLSColour:
+    return HLSColour(h, l, s, a)
+
+
+@dataclasses.dataclass(frozen=True)
+class Colour:
+    r: float
+    g: float
+    b: float
+    a: float = 1.0
+
+    def rgba(self) -> Tuple[float, float, float, float]:
+        return self.r, self.g, self.b, self.a
+
+    def rgb(self) -> Tuple[float, float, float]:
+        return self.r, self.g, self.b
+
+    def hls(self) -> HLSColour:
+        h, l, s = colorsys.rgb_to_hls(self.r, self.g, self.b)
+        return HLSColour(h, l, s, self.a)
+
+    def darken(self, by: float) -> 'Colour':
+        return self.hls().darken(by).rgb()
+
+    def lighten(self, by: float) -> 'Colour':
+        return self.hls().lighten(by).rgb()
+
+    def alpha(self, new_alpha: float):
+        return Colour(self.r, self.g, self.b, new_alpha)
+
+    @staticmethod
+    def _rescale(t):
+        return map(lambda v: v / 255.0, t)
+
+    @staticmethod
+    def hex(hexcolour: str, alpha=1.0):
+        if hexcolour.startswith("#"):
+            hexcolour = hexcolour[1:]
+        r, g, b = Colour._rescale(tuple(int(hexcolour[i:i + 2], 16) for i in (0, 2, 4)))
+        return Colour(r, g, b, alpha)
+
+    @staticmethod
+    def from_pil(r, g, b, a=255):
+        return Colour(*Colour._rescale((r, g, b, a)))
+
+    def apply_to(self, context: cairo.Context):
+        context.set_source_rgba(*self.rgba())
 
 
 class NullMapProvider(MapProvider):
@@ -54,7 +126,7 @@ class PMMap(Map):
 
     def tiles(self):
         coord, offset = _find_top_left_tile(self)
-        coords = [XYZ(c[0], c[1], map.zoom) for c in _tile_coords(self, coord, offset)]
+        coords = [XYZ(c[0], c[1], self.zoom) for c in _tile_coords(self, coord, offset)]
         offsets = [Offset(o[0], o[1]) for o in _tile_offsets(self, offset)]
 
         return [Tile(locator=z[0], offset=z[1]) for z in zip(coords, offsets)]
@@ -67,7 +139,6 @@ class RequestsSource:
         self.cache = cache
 
     def get_bytes(self, offset, length):
-        print(f"Offset {offset}   Length {length} -> {offset + length - 1}")
         headers = {"Range": f"bytes={offset}-{offset + length - 1}"}
 
         key = f"{self.uri}{offset}{length}"
@@ -152,10 +223,248 @@ class PMReader:
                     )
 
 
-if __name__ == "__main__":
-    map = PMMap(center=(-0.264333, 51.445114), zoom=12, size=(500, 500))
+class FeatureDrawing:
+    def draw(self, ctx: cairo.Context, feature):
+        raise NotImplementedError()
 
-    print(map.tiles())
+
+class PolygonFeatureDrawing(FeatureDrawing):
+    def __init__(self, colour: Colour):
+        self.colour = colour
+
+    def draw(self, ctx: cairo.Context, feature):
+
+        self.colour.apply_to(ctx)
+
+        geometry = feature["geometry"]
+        if geometry["type"] != "Polygon":
+            print(f"unsupported feature type {geometry['type']}")
+        else:
+            for poly in geometry["coordinates"]:
+                for i, xy in enumerate(poly):
+                    if i == 0:
+                        ctx.move_to(xy[0], 4096 - xy[1])
+                    else:
+                        ctx.line_to(xy[0], 4096 - xy[1])
+                ctx.fill()
+
+
+class LineFeatureDrawing(FeatureDrawing):
+    def __init__(self, colour: Colour, width):
+        self.colour = colour
+        self.width = width
+
+    def draw(self, ctx: cairo.Context, feature):
+        self.colour.apply_to(ctx)
+
+        ctx.set_line_width(self.width)
+
+        geometry = feature["geometry"]
+        geometry_type_ = geometry["type"]
+
+        if geometry_type_ == "LineString":
+            lines = [geometry["coordinates"]]
+        elif geometry_type_ == "MultiLineString":
+            lines = geometry["coordinates"]
+        else:
+            print(f"unsupported feature type {geometry_type_}")
+            return
+
+        for line in lines:
+            for i, xy in enumerate(line):
+                if i == 0:
+                    ctx.move_to(xy[0], 4096 - xy[1])
+                else:
+                    ctx.line_to(xy[0], 4096 - xy[1])
+            ctx.stroke()
+
+
+style = {
+    "earth": hsl(47 / 256, .26, .86),
+    "glacier": hsl(47 / 256, .22, .94),
+    "residential": hsl(.47, .13, .86),
+    "hospital": Colour.hex("#B284BC"),
+    "cemetery": Colour.hex("#333333"),
+    "school": Colour.hex("#BBB993"),
+    "industrial": Colour.hex("#FFF9EF"),
+    "wood": hsl(82 / 256, .46, .72),
+    "grass": hsl(82 / 256, .46, .72),
+    "park": Colour.hex("#E5F9D5"),
+    "water": hsl(205 / 256, .56, .73),
+    "sand": hsl(232 / 256, 214 / 256, 38 / 256),
+    "buildings": Colour.hex("#F2EDE8"),
+    "highwayOuter": Colour.hex("#FFC3C3"),
+    "majorRoadOuter": Colour.hex("#1C7C08"),
+    "mediumRoadOuter": Colour.hex("#08547D"),
+    "minorRoadOuter": Colour.hex("#2B087D"),
+    "highway": Colour.hex("#FFCEBB"),
+    "majorRoad": Colour.hex("#FFE4B3"),
+    "mediumRoad": Colour.hex("#FFF2C8"),
+    "minorRoad": Colour.hex("#ffffff"),
+    "waterway": Colour.hex("94C1E1")
+}
+
+
+class FeatureFilter:
+    def wants(self, feature) -> bool:
+        raise NotImplementedError()
+
+
+class AnyFeature(FeatureFilter):
+
+    def wants(self, feature) -> bool:
+        return True
+
+
+class PropertyFilter(FeatureFilter):
+
+    def __init__(self, name: str, wanted: Set[str]):
+        self.name = name
+        self.wanted = wanted
+
+    def wants(self, feature) -> bool:
+        return feature.get("properties", {}).get(self.name, None) in self.wanted
+
+
+@dataclasses.dataclass(frozen=True)
+class LayerDrawingRule:
+    layer: str
+    drawing: FeatureDrawing
+    filter: FeatureFilter
+
+
+rules = [
+    LayerDrawingRule(
+        "earth",
+        PolygonFeatureDrawing(style["earth"]),
+        AnyFeature()
+    ),
+    LayerDrawingRule(
+        "natural",
+        PolygonFeatureDrawing(style["wood"]),
+        PropertyFilter("natural", {"wood"})
+    ),
+    LayerDrawingRule(
+        "natural",
+        PolygonFeatureDrawing(style["sand"]),
+        PropertyFilter("natural", {"sand"})
+    ),
+    LayerDrawingRule(
+        "landuse",
+        PolygonFeatureDrawing(style["residential"]),
+        PropertyFilter("landuse", {"residential", "neighbourhood"})
+    ),
+    LayerDrawingRule(
+        "landuse",
+        PolygonFeatureDrawing(style["hospital"]),
+        PropertyFilter("amenity", {"hospital"})
+    ),
+    LayerDrawingRule(
+        "landuse",
+        PolygonFeatureDrawing(style["school"]),
+        PropertyFilter("amenity", {"school", "kindergarten", "university", "college"})
+    ),
+    LayerDrawingRule(
+        "landuse",
+        PolygonFeatureDrawing(style["industrial"]),
+        PropertyFilter("landuse", {"industrial"})
+    ),
+    LayerDrawingRule(
+        "landuse",
+        PolygonFeatureDrawing(style["grass"]),
+        PropertyFilter("landuse", {"grass"})
+    ),
+    LayerDrawingRule(
+        "buildings",
+        PolygonFeatureDrawing(style["buildings"]),
+        AnyFeature()
+    ),
+    LayerDrawingRule(
+        "landuse",
+        PolygonFeatureDrawing(style["park"]),
+        PropertyFilter("landuse", {"park"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["highwayOuter"], 5),
+        PropertyFilter("pmap:kind", {"highway"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["highway"], 4),
+        PropertyFilter("pmap:kind", {"highway"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["majorRoadOuter"], 4),
+        PropertyFilter("pmap:kind", {"major_road"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["majorRoad"], 3),
+        PropertyFilter("pmap:kind", {"major_road"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["mediumRoadOuter"], 3),
+        PropertyFilter("pmap:kind", {"medium_road"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["mediumRoad"], 2),
+        PropertyFilter("pmap:kind", {"medium_road"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["minorRoadOuter"], 2),
+        PropertyFilter("pmap:kind", {"minor_road"})
+    ),
+    LayerDrawingRule(
+        "roads",
+        LineFeatureDrawing(style["minorRoad"], 1),
+        PropertyFilter("pmap:kind", {"minor_road"})
+    ),
+    LayerDrawingRule(
+        "water",
+        PolygonFeatureDrawing(style["waterway"]),
+        AnyFeature()
+    )
+]
+
+
+def draw(tile: dict) -> cairo.ImageSurface:
+    size = 1024
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    ctx = cairo.Context(surface)
+    ctx.scale(size / 4096, size / 4096)
+
+    ctx.set_line_width(2)
+
+    for rule in rules:
+        features = tile[rule.layer]["features"]
+
+        for feature in features:
+            if rule.filter.wants(feature):
+                rule.drawing.draw(ctx, feature)
+
+    return surface
+
+
+def to_pillow(surface: cairo.ImageSurface) -> Image:
+    size = (surface.get_width(), surface.get_height())
+    stride = surface.get_stride()
+
+    format = surface.get_format()
+    if format != cairo.FORMAT_ARGB32:
+        raise IOError(f"Only support ARGB32 images, not {format}")
+
+    with surface.get_data() as memory:
+        return Image.frombuffer("RGBA", size, memory.tobytes(), 'raw', "BGRa", stride)
+
+
+if __name__ == "__main__":
+    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=12, size=(500, 500))
 
     with SqliteDict(filename="pmtile.sqlite", autocommit=True) as cache:
         source = RequestsSource(
@@ -165,7 +474,11 @@ if __name__ == "__main__":
 
         reader = PMReader(source.get_bytes)
 
-        for tile in map.tiles():
-            b = reader.xyz(tile.locator)
-            d = TileData(b)
-            print(d)
+        # for tile in pmmap.tiles():
+        #     b = reader.xyz(tile.locator)
+        #     d = TileData(b)
+        #     message = d.get_message()
+
+        message = TileData(reader.xyz(XYZ(2044, 1362, 12))).get_message()
+
+        to_pillow(draw(message)).show()
