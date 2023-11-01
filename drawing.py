@@ -78,6 +78,10 @@ class LineDash(ContextModification):
         ctx.set_dash(self.dash)
 
 
+def linedash(*w: float) -> ContextModification:
+    return LineDash(w)
+
+
 class FeatureDrawing:
     def draw(self, ctx: cairo.Context, feature):
         raise NotImplementedError()
@@ -93,7 +97,8 @@ class PolygonFeatureDrawing(FeatureDrawing):
 
         geometry = feature["geometry"]
         if geometry["type"] != "Polygon":
-            print(f"unsupported feature type {geometry['type']}")
+            pass
+            # print(f"unsupported feature type {geometry['type']}")
         else:
             for poly in geometry["coordinates"]:
                 for i, xy in enumerate(poly):

@@ -1,3 +1,4 @@
+import timeit
 from typing import List
 
 import cairo
@@ -5,10 +6,10 @@ from mapbox_vector_tile.decoder import TileData
 from sqlitedict import SqliteDict
 
 from colour import Colour
-from drawing import PolygonFeatureDrawing, LineFeatureDrawing, AnyFeature, PropertyFilter, LayerDrawingRule, multiple, drawcolour, linewidth
+from drawing import PolygonFeatureDrawing, LineFeatureDrawing, AnyFeature, PropertyFilter, LayerDrawingRule, multiple, drawcolour, linewidth, linedash
 from image import to_pillow
 from maps import PMMap, RequestsSource, PMReader
-from styles import style
+from styles import style, rules
 
 test_rules = [
     LayerDrawingRule(
@@ -18,14 +19,10 @@ test_rules = [
     ),
     LayerDrawingRule(
         "roads",
-        LineFeatureDrawing(multiple(drawcolour(style["minorRoadOuter"]), linewidth(5))),
+        LineFeatureDrawing(multiple(drawcolour(Colour.hex("ffffff")), linewidth(5), linedash(20,10))),
         PropertyFilter("pmap:kind", {"minor_road"})
     ),
-    LayerDrawingRule(
-        "roads",
-        LineFeatureDrawing(multiple(drawcolour(style["minorRoad"]), linewidth(4))),
-        PropertyFilter("pmap:kind", {"minor_road"})
-    ),
+
 ]
 
 
@@ -58,4 +55,4 @@ if __name__ == "__main__":
         for tile in pmmap.tiles()[0:1]:
             message = TileData(reader.xyz(tile.locator)).get_message()
 
-            to_pillow(draw(test_rules, message)).show()
+            to_pillow(draw(rules, message)).show()
