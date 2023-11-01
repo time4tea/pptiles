@@ -93,8 +93,8 @@ class NullMapProvider(MapProvider):
     # noinspection PyMissingConstructor
     def __init__(self):
         self.projection = WebMercator(0)
-        self.tile_width = 256
-        self.tile_height = 256
+        self.tile_width = 512
+        self.tile_height = 512
 
     def tile_url(self, tile_coord, zoom):
         raise NotImplementedError()
@@ -463,7 +463,7 @@ def to_pillow(surface: cairo.ImageSurface) -> Image:
 
 
 if __name__ == "__main__":
-    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=9, size=(500, 500))
+    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=13, size=(500, 500))
 
     with SqliteDict(filename="pmtile.sqlite", autocommit=True) as cache:
         source = RequestsSource(
