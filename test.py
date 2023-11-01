@@ -332,6 +332,12 @@ class LayerDrawingRule:
     drawing: FeatureDrawing
     filter: FeatureFilter
 
+    def draw(self, ctx: cairo.Context, tile: dict):
+        if self.layer in tile:
+            for feature in tile[self.layer]["features"]:
+                if self.filter.wants(feature):
+                    self.drawing.draw(ctx, feature)
+
 
 rules = [
     LayerDrawingRule(
@@ -442,10 +448,7 @@ def draw(tile: dict) -> cairo.ImageSurface:
     ctx.set_line_width(2)
 
     for rule in rules:
-        if rule.layer in tile:
-            for feature in tile[rule.layer]["features"]:
-                if rule.filter.wants(feature):
-                    rule.drawing.draw(ctx, feature)
+        rule.draw(ctx, tile)
 
     return surface
 
