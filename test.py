@@ -433,7 +433,7 @@ rules = [
 
 
 def draw(tile: dict) -> cairo.ImageSurface:
-    size = 1024
+    size = 512
 
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     ctx = cairo.Context(surface)
@@ -442,11 +442,10 @@ def draw(tile: dict) -> cairo.ImageSurface:
     ctx.set_line_width(2)
 
     for rule in rules:
-        features = tile[rule.layer]["features"]
-
-        for feature in features:
-            if rule.filter.wants(feature):
-                rule.drawing.draw(ctx, feature)
+        if rule.layer in tile:
+            for feature in tile[rule.layer]["features"]:
+                if rule.filter.wants(feature):
+                    rule.drawing.draw(ctx, feature)
 
     return surface
 
@@ -464,7 +463,7 @@ def to_pillow(surface: cairo.ImageSurface) -> Image:
 
 
 if __name__ == "__main__":
-    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=12, size=(500, 500))
+    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=9, size=(500, 500))
 
     with SqliteDict(filename="pmtile.sqlite", autocommit=True) as cache:
         source = RequestsSource(
@@ -474,11 +473,11 @@ if __name__ == "__main__":
 
         reader = PMReader(source.get_bytes)
 
-        # for tile in pmmap.tiles():
-        #     b = reader.xyz(tile.locator)
-        #     d = TileData(b)
-        #     message = d.get_message()
+        for tile in pmmap.tiles():
+            b = reader.xyz(tile.locator)
+            d = TileData(b)
+            message = d.get_message()
 
-        message = TileData(reader.xyz(XYZ(2044, 1362, 12))).get_message()
+            # message = TileData(reader.xyz(XYZ(2044, 1362, 12))).get_message()
 
-        to_pillow(draw(message)).show()
+            to_pillow(draw(message)).show()
