@@ -4,7 +4,7 @@ import gzip
 import json
 from collections import defaultdict
 from functools import cached_property
-from typing import Tuple, Set
+from typing import Tuple, Set, List
 
 import cairo
 import requests
@@ -438,7 +438,7 @@ rules = [
 ]
 
 
-def draw(tile: dict) -> cairo.ImageSurface:
+def draw(rules: List[LayerDrawingRule], tile: dict) -> cairo.ImageSurface:
     size = 512
 
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
@@ -477,10 +477,6 @@ if __name__ == "__main__":
         reader = PMReader(source.get_bytes)
 
         for tile in pmmap.tiles():
-            b = reader.xyz(tile.locator)
-            d = TileData(b)
-            message = d.get_message()
+            message = TileData(reader.xyz(tile.locator)).get_message()
 
-            # message = TileData(reader.xyz(XYZ(2044, 1362, 12))).get_message()
-
-            to_pillow(draw(message)).show()
+            to_pillow(draw(rules, message)).show()
