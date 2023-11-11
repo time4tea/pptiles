@@ -1,4 +1,3 @@
-import timeit
 from typing import List
 
 import cairo
@@ -6,7 +5,8 @@ from mapbox_vector_tile.decoder import TileData
 from sqlitedict import SqliteDict
 
 from colour import Colour
-from drawing import PolygonFeatureDrawing, LineFeatureDrawing, AnyFeature, PropertyFilter, LayerDrawingRule, multiple, drawcolour, linewidth, linedash
+from drawing import PolygonFeatureDrawing, LineFeatureDrawing, LayerDrawingRule, multiple, \
+    drawcolour, linewidth, linedash, fill, f_any, f_property, stroke
 from image import to_pillow
 from maps import PMMap, RequestsSource, PMReader
 from styles import style, rules
@@ -14,19 +14,30 @@ from styles import style, rules
 test_rules = [
     LayerDrawingRule(
         "earth",
-        PolygonFeatureDrawing(multiple(drawcolour(Colour.hex("000000")))),
-        AnyFeature()
+        PolygonFeatureDrawing(
+            drawing=fill(multiple(drawcolour(style["earth"])), )
+        ),
+        f_any()
     ),
     LayerDrawingRule(
+        "landuse",
+        PolygonFeatureDrawing(
+            drawing=fill(drawcolour(style["residential"]))
+        ),
+        f_property("landuse", {"residential", "neighbourhood"})
+    ),
+
+    LayerDrawingRule(
         "roads",
-        LineFeatureDrawing(multiple(drawcolour(Colour.hex("ffffff")), linewidth(5), linedash(20,10))),
-        PropertyFilter("pmap:kind", {"minor_road"})
+        LineFeatureDrawing(
+            drawing=stroke(multiple(drawcolour(Colour.hex("ffffff")), linewidth(5), linedash(20, 10)))),
+        f_property("pmap:kind", {"minor_road"})
     ),
 
 ]
 
 
-def draw(rules: List[LayerDrawingRule], tile: dict) -> cairo.ImageSurface:
+def draw(rules: List[LayerDrawingRule], zoom: int, tile: dict) -> cairo.ImageSurface:
     size = 1024
 
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
@@ -36,7 +47,7 @@ def draw(rules: List[LayerDrawingRule], tile: dict) -> cairo.ImageSurface:
     ctx.set_line_width(2)
 
     for rule in rules:
-        rule.draw(ctx, tile)
+        rule.draw(ctx, zoom, tile)
 
     return surface
 
@@ -55,4 +66,4 @@ if __name__ == "__main__":
         for tile in pmmap.tiles()[0:1]:
             message = TileData(reader.xyz(tile.locator)).get_message()
 
-            to_pillow(draw(rules, message)).show()
+            to_pillow(draw(rules, tile.locator.z, message)).show()

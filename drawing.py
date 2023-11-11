@@ -1,100 +1,87 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Sequence, Set
+from typing import Set, Callable
 
 import cairo
 
 from colour import Colour
 
-
-class ContextModification:
-    def modify(self, ctx: cairo.Context):
-        raise NotImplementedError()
+ContextModification = Callable[[int, cairo.Context], None]
 
 
-class ContextModifications(ContextModification):
-    def __init__(self, modifications: Sequence[ContextModification]):
-        self.modifications = modifications
+def multiple(*ms: ContextModification) -> ContextModification:
+    def f(z: int, ctx: cairo.Context):
+        [m(z, ctx) for m in ms]
 
-    def modify(self, ctx: cairo.Context):
-        [m.modify(ctx) for m in self.modifications]
-
-
-def multiple(*m: ContextModification) -> ContextModification:
-    return ContextModifications(m)
-
-
-class DrawColour(ContextModification):
-
-    def __init__(self, colour: Colour):
-        self.colour = colour
-
-    def modify(self, ctx: cairo.Context):
-        self.colour.apply_to(ctx)
+    return f
 
 
 def drawcolour(c: Colour) -> ContextModification:
-    return DrawColour(c)
-
-
-class LineWidth(ContextModification):
-
-    def __init__(self, width):
-        self.width = width
-
-    def modify(self, ctx: cairo.Context):
-        ctx.set_line_width(self.width)
+    return lambda z, ctx: c.apply_to(ctx)
 
 
 def linewidth(w: float) -> ContextModification:
-    return LineWidth(w)
+    return lambda z, ctx: ctx.set_line_width(w)
 
 
-class LineCap(ContextModification):
-
-    def __init__(self, cap: cairo.LineCap):
-        self.cap = cap
-
-    def modify(self, ctx: cairo.Context):
-        ctx.set_line_cap(self.cap)
+def linecap(cap: cairo.LineCap) -> ContextModification:
+    return lambda z, ctx: ctx.set_line_cap(cap)
 
 
-class LineJoin(ContextModification):
-
-    def __init__(self, join: cairo.LineJoin):
-        self.join = join
-
-    def modify(self, ctx: cairo.Context):
-        ctx.set_line_join(self.join)
-
-
-class LineDash(ContextModification):
-
-    def __init__(self, dash: Sequence[float]):
-        self.dash = dash
-
-    def modify(self, ctx: cairo.Context):
-        ctx.set_dash(self.dash)
+def linejoin(join: cairo.LineJoin) -> ContextModification:
+    return lambda z, ctx: ctx.set_line_join(join)
 
 
 def linedash(*w: float) -> ContextModification:
-    return LineDash(w)
+    return lambda z, ctx: ctx.set_dash(w)
+
+
+Drawing = Callable[[int, cairo.Context], None]
+
+
+def fill(m: ContextModification) -> Drawing:
+    def f(z: int, ctx: cairo.Context):
+        m(z, ctx)
+        ctx.fill()
+
+    return f
+
+
+def fill_preserve(m: ContextModification) -> Drawing:
+    def f(z: int, ctx: cairo.Context):
+        m(z, ctx)
+        ctx.fill_preserve()
+
+    return f
+
+
+def stroke(m: ContextModification) -> Drawing:
+    def f(z: int, ctx: cairo.Context):
+        m(z, ctx)
+        ctx.stroke()
+
+    return f
+
+
+def stroke_preserve(m: ContextModification) -> Drawing:
+    def f(z: int, ctx: cairo.Context):
+        m(z, ctx)
+        ctx.stroke_preserve()
+
+    return f
 
 
 class FeatureDrawing:
-    def draw(self, ctx: cairo.Context, feature):
+    def draw(self, ctx: cairo.Context, zoom: int, feature):
         raise NotImplementedError()
 
 
 class PolygonFeatureDrawing(FeatureDrawing):
-    def __init__(self, modification: ContextModification):
-        self.modification = modification
+    def __init__(self, drawing: Drawing):
+        self.drawing = drawing
 
-    def draw(self, ctx: cairo.Context, feature):
-
-        self.modification.modify(ctx)
-
+    def draw(self, ctx: cairo.Context, zoom, feature):
         geometry = feature["geometry"]
         if geometry["type"] != "Polygon":
             pass
@@ -106,17 +93,15 @@ class PolygonFeatureDrawing(FeatureDrawing):
                         ctx.move_to(xy[0], 4096 - xy[1])
                     else:
                         ctx.line_to(xy[0], 4096 - xy[1])
-                ctx.fill()
+
+            self.drawing(zoom, ctx)
 
 
 class LineFeatureDrawing(FeatureDrawing):
-    def __init__(self, modification: ContextModification):
-        self.modification = modification
+    def __init__(self, drawing: Drawing):
+        self.drawing = drawing
 
-    def draw(self, ctx: cairo.Context, feature):
-
-        self.modification.modify(ctx)
-
+    def draw(self, ctx: cairo.Context, zoom, feature):
         geometry = feature["geometry"]
         geometry_type_ = geometry["type"]
 
@@ -134,28 +119,19 @@ class LineFeatureDrawing(FeatureDrawing):
                     ctx.move_to(xy[0], 4096 - xy[1])
                 else:
                     ctx.line_to(xy[0], 4096 - xy[1])
-        ctx.stroke()
+
+        self.drawing(zoom, ctx)
 
 
-class FeatureFilter:
-    def wants(self, feature) -> bool:
-        raise NotImplementedError()
+FeatureFilter = Callable[[dict], bool]
 
 
-class AnyFeature(FeatureFilter):
-
-    def wants(self, feature) -> bool:
-        return True
+def f_any() -> FeatureFilter:
+    return lambda f: True
 
 
-class PropertyFilter(FeatureFilter):
-
-    def __init__(self, name: str, wanted: Set[str]):
-        self.name = name
-        self.wanted = wanted
-
-    def wants(self, feature) -> bool:
-        return feature.get("properties", {}).get(self.name, None) in self.wanted
+def f_property(name: str, wanted: Set[str]) -> FeatureFilter:
+    return lambda f: f.get("properties", {}).get(name, None) in wanted
 
 
 @dataclasses.dataclass(frozen=True)
@@ -164,8 +140,8 @@ class LayerDrawingRule:
     drawing: FeatureDrawing
     filter: FeatureFilter
 
-    def draw(self, ctx: cairo.Context, tile: dict):
+    def draw(self, ctx: cairo.Context, zoom: int, tile: dict):
         if self.layer in tile:
             for feature in tile[self.layer]["features"]:
-                if self.filter.wants(feature):
-                    self.drawing.draw(ctx, feature)
+                if self.filter(feature):
+                    self.drawing.draw(ctx, zoom, feature)
