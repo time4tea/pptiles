@@ -39,7 +39,7 @@ class Offset:
 
 @dataclasses.dataclass(frozen=True)
 class Tile:
-    locator: XYZ
+    xyz: XYZ
     offset: Offset
 
 
@@ -53,16 +53,21 @@ class PMMap(Map):
         coords = [XYZ(c[0], c[1], self.zoom) for c in _tile_coords(self, coord, offset)]
         offsets = [Offset(o[0], o[1]) for o in _tile_offsets(self, offset)]
 
-        return [Tile(locator=z[0], offset=z[1]) for z in zip(coords, offsets)]
+        return [Tile(xyz=z[0], offset=z[1]) for z in zip(coords, offsets)]
 
 
-class RequestsSource:
+class Source:
+    def load(self, offset: int, length: int):
+        raise NotImplementedError()
+
+
+class RequestsSource(Source):
 
     def __init__(self, uri, cache: dict):
         self.uri = uri
         self.cache = cache
 
-    def get_bytes(self, offset, length):
+    def load(self, offset, length):
         headers = {"Range": f"bytes={offset}-{offset + length - 1}"}
 
         key = f"{self.uri}{offset}{length}"
@@ -85,21 +90,21 @@ class keydefaultdict(defaultdict):
 
 class PMReader:
 
-    def __init__(self, get_bytes):
-        self.get_bytes = get_bytes
-        self.directories = keydefaultdict(lambda ol: deserialize_directory(self.get_bytes(ol[0], ol[1])))
+    def __init__(self, source: Source):
+        self.source = source
+        self.directories = keydefaultdict(lambda ol: deserialize_directory(self.source.load(ol[0], ol[1])))
 
     def xyz(self, xyz: XYZ):
         return self.get(xyz.z, xyz.x, xyz.y)
 
     @cached_property
     def header(self):
-        return deserialize_header(self.get_bytes(0, 127))
+        return deserialize_header(self.source.load(0, 127))
 
     @cached_property
     def metadata(self):
         header = self.header
-        metadata = self.get_bytes(header["metadata_offset"], header["metadata_length"])
+        metadata = self.source.load(header["metadata_offset"], header["metadata_length"])
         if header["internal_compression"] == Compression.GZIP:
             metadata = gzip.decompress(metadata)
         return json.loads(metadata)
@@ -143,5 +148,5 @@ class PMReader:
                     dir_length = result.length
                 else:
                     return self._decompress_tile(
-                        self.get_bytes(self._tile_data_offset + result.offset, result.length)
+                        self.source.load(self._tile_data_offset + result.offset, result.length)
                     )

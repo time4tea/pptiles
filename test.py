@@ -60,9 +60,9 @@ if __name__ == "__main__":
             cache=cache
         )
 
-        reader = PMReader(source.get_bytes)
+        reader = PMReader(source)
 
         for tile in pmmap.tiles()[0:1]:
-            message = TileData(reader.xyz(tile.locator)).get_message()
+            message = TileData(reader.xyz(tile.xyz)).get_message()
 
-            to_pillow(draw(rules, tile.locator.z, message)).show()
+            to_pillow(draw(rules, tile.xyz.z, message)).show()
