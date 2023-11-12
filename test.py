@@ -52,7 +52,7 @@ def draw(rules: List[LayerDrawingRule], zoom: int, tile: dict) -> cairo.ImageSur
 
 
 if __name__ == "__main__":
-    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=15, size=(500, 500))
+    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=12, size=(500, 500))
 
     with SqliteDict(filename="pmtile.sqlite", autocommit=True) as cache:
         source = RequestsSource(

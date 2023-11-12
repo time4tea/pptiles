@@ -19,7 +19,7 @@ style = {
     "highwayOuter": Colour.hex("#FFC3C3"),
     "highway": Colour.hex("#FFCEBB"),
     "majorRoadOuter": Colour.hex("#1C7C08"),
-    "majorRoad": Colour.hex("#FFE4B3"),
+    "majorRoad": Colour.hex("#ff00ff"),
     "mediumRoadOuter": Colour.hex("#08547D"),
     "mediumRoad": Colour.hex("#FFF2C8"),
     "minorRoadOuter": Colour.hex("#2B087D"),

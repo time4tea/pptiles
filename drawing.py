@@ -30,9 +30,7 @@ def linewidth(w: float) -> ContextModification:
 def widthexp(base: float, stops: List[Tuple[int, int]]) -> Callable[[int], float]:
     def fact(z, idx):
         d = stops[idx + 1][0] - stops[idx][0]
-        print(f"difference {d}")
         p = z - stops[idx][0]
-        print(f"progress {p}")
 
         if d == 0:
             return 0
@@ -50,12 +48,8 @@ def widthexp(base: float, stops: List[Tuple[int, int]]) -> Callable[[int], float
         if z > stops[-1][0]:
             return stops[-1][1]
         i = bisect.bisect_left(stops, z, key=lambda s: s[0]) - 1
-        print(f"index {i}")
         factor = fact(z, i)
-        print(f"factor {factor}")
-        w = lerp(factor, stops[i][1], stops[i + 1][1])
-        print(f"result {w}")
-        return w
+        return lerp(factor, stops[i][1], stops[i + 1][1])
 
     return f
 
