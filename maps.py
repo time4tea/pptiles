@@ -3,6 +3,9 @@ import gzip
 import json
 from collections import defaultdict
 from functools import cached_property
+from pathlib import Path
+from threading import Lock
+from typing import Mapping
 
 import requests
 from geotiler import Map
@@ -61,9 +64,24 @@ class Source:
         raise NotImplementedError()
 
 
+class FileSource(Source):
+
+    def __init__(self, path: Path):
+        self.fp = path.open("rb")
+        self.lock = Lock()
+
+    def load(self, offset: int, length: int):
+        try:
+            self.lock.acquire()
+            self.fp.seek(offset)
+            return self.fp.read(length)
+        finally:
+            self.lock.release()
+
+
 class RequestsSource(Source):
 
-    def __init__(self, uri, cache: dict):
+    def __init__(self, uri, cache: Mapping):
         self.uri = uri
         self.cache = cache
 

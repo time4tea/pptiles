@@ -1,5 +1,6 @@
 import colorsys
 import dataclasses
+import re
 from typing import Tuple
 
 import cairo
@@ -24,6 +25,12 @@ class HLSColour:
 
     def apply_to(self, context: cairo.Context):
         self.rgb().apply_to(context)
+
+
+rgb_expr = re.compile(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
+rgba_expr = re.compile(r"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
+hex_expr = re.compile(r"#(([a-fA-F0-9][a-fA-F0-9]){3})")
+hsl_expr = re.compile(r"hsl\((\d+),\s+(\d+)%,\s*(\d+)%\)")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -69,6 +76,31 @@ class Colour:
 
     def apply_to(self, context: cairo.Context):
         context.set_source_rgba(*self.rgba())
+
+    @classmethod
+    def from_spec(cls, colour_spec) -> 'Colour':
+        m = rgb_expr.match(colour_spec)
+        if m is not None:
+            pass
+        m = rgba_expr.match(colour_spec)
+        if m is not None:
+            return Colour(
+                int(m.group(1)) / 256.0,
+                int(m.group(2)) / 256.0,
+                int(m.group(3)) / 256.0,
+                float(m.group(4))
+            )
+        m = hex_expr.match(colour_spec)
+        if m is not None:
+            return Colour.hex(m.group(1))
+        m = hsl_expr.match(colour_spec)
+        if m is not None:
+            return hsl(
+                int(m.group(1)),
+                int(m.group(2)),
+                int(m.group(3))).rgb()
+        print(f"Can't parse {colour_spec}")
+        return Colour(1.0, 1.0, 1.0)
 
 
 def hsl(h, s, l, a=1.0) -> HLSColour:
