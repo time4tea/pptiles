@@ -33,7 +33,6 @@ test_rules = [
             drawing=stroke(multiple(drawcolour(Colour.hex("ffffff")), linewidth(5), linedash(20, 10)))),
         f_property("pmap:kind", {"minor_road"})
     ),
-
 ]
 
 
@@ -53,7 +52,7 @@ def draw(rules: List[LayerDrawingRule], zoom: int, tile: dict) -> cairo.ImageSur
 
 
 if __name__ == "__main__":
-    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=13, size=(500, 500))
+    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=15, size=(500, 500))
 
     with SqliteDict(filename="pmtile.sqlite", autocommit=True) as cache:
         source = RequestsSource(

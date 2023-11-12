@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import bisect
 import dataclasses
-from typing import Set, Callable
+import math
+from typing import Set, Callable, List, Tuple
 
 import cairo
 
@@ -23,6 +25,44 @@ def drawcolour(c: Colour) -> ContextModification:
 
 def linewidth(w: float) -> ContextModification:
     return lambda z, ctx: ctx.set_line_width(w)
+
+
+def widthexp(base: float, stops: List[Tuple[int, int]]) -> Callable[[int], float]:
+    def fact(z, idx):
+        d = stops[idx + 1][0] - stops[idx][0]
+        print(f"difference {d}")
+        p = z - stops[idx][0]
+        print(f"progress {p}")
+
+        if d == 0:
+            return 0
+        elif base == 1:
+            return p / d
+        else:
+            return (math.pow(base, p) - 1) / (math.pow(base, d) - 1)
+
+    def lerp(factor, start, end):
+        return factor * (end - start) + start
+
+    def f(z):
+        if z < stops[0][0]:
+            return stops[0][1]
+        if z > stops[-1][0]:
+            return stops[-1][1]
+        i = bisect.bisect_left(stops, z, key=lambda s: s[0]) - 1
+        print(f"index {i}")
+        factor = fact(z, i)
+        print(f"factor {factor}")
+        w = lerp(factor, stops[i][1], stops[i + 1][1])
+        print(f"result {w}")
+        return w
+
+    return f
+
+
+def linewidthexp(base: float, stops: List[Tuple[int, int]]) -> ContextModification:
+    f = widthexp(base, stops)
+    return lambda z, ctx: ctx.set_line_width(f(z))
 
 
 def linecap(cap: cairo.LineCap) -> ContextModification:
@@ -134,14 +174,40 @@ def f_property(name: str, wanted: Set[str]) -> FeatureFilter:
     return lambda f: f.get("properties", {}).get(name, None) in wanted
 
 
+ZoomFilter = Callable[[int], bool]
+
+
+def above(i: int) -> ZoomFilter:
+    return lambda z: z >= i
+
+
+def below(i: int) -> ZoomFilter:
+    return lambda z: z <= i
+
+
+def between(i: int, j: int) -> ZoomFilter:
+    return lambda z: i <= z <= j
+
+
 @dataclasses.dataclass(frozen=True)
 class LayerDrawingRule:
     layer: str
     drawing: FeatureDrawing
     filter: FeatureFilter
+    zooms: ZoomFilter = lambda z: True
 
     def draw(self, ctx: cairo.Context, zoom: int, tile: dict):
-        if self.layer in tile:
-            for feature in tile[self.layer]["features"]:
-                if self.filter(feature):
-                    self.drawing.draw(ctx, zoom, feature)
+        if self.zooms(zoom):
+            if self.layer in tile:
+                for feature in tile[self.layer]["features"]:
+                    if self.filter(feature):
+                        self.drawing.draw(ctx, zoom, feature)
+
+
+if __name__ == "__main__":
+    w = widthexp(1.4, [
+        (13, 2),
+        (17, 4),
+        (20, 15),
+  ])
+    print(w(14))

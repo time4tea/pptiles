@@ -1,6 +1,6 @@
 from colour import hsl, Colour
-from drawing import LayerDrawingRule, PolygonFeatureDrawing, LineFeatureDrawing, drawcolour, multiple, linewidth, f_any, \
-    f_property, fill, stroke, fill_preserve
+from drawing import LayerDrawingRule, PolygonFeatureDrawing, LineFeatureDrawing, drawcolour, multiple, f_any, \
+    f_property, fill, stroke, linewidthexp, stroke_preserve, fill_preserve, linewidth
 
 style = {
     "earth": hsl(47 / 256, .26, .86),
@@ -17,12 +17,12 @@ style = {
     "sand": hsl(232 / 256, 214 / 256, 38 / 256),
     "buildings": Colour.hex("#F2EDE8"),
     "highwayOuter": Colour.hex("#FFC3C3"),
-    "majorRoadOuter": Colour.hex("#1C7C08"),
-    "mediumRoadOuter": Colour.hex("#08547D"),
-    "minorRoadOuter": Colour.hex("#2B087D"),
     "highway": Colour.hex("#FFCEBB"),
+    "majorRoadOuter": Colour.hex("#1C7C08"),
     "majorRoad": Colour.hex("#FFE4B3"),
+    "mediumRoadOuter": Colour.hex("#08547D"),
     "mediumRoad": Colour.hex("#FFF2C8"),
+    "minorRoadOuter": Colour.hex("#2B087D"),
     "minorRoad": Colour.hex("#ffffff"),
     "waterway": Colour.hex("94C1E1")
 }
@@ -99,7 +99,22 @@ rules = [
     ),
     LayerDrawingRule(
         "roads",
-        LineFeatureDrawing(stroke(multiple(drawcolour(style["majorRoadOuter"]), linewidth(4)))),
+        LineFeatureDrawing(
+            multiple(
+                stroke_preserve(multiple(drawcolour(style["majorRoadOuter"]), linewidthexp(1.4, [
+                    (9, 3),
+                    (12, 4),
+                    (17, 8),
+                    (20, 22),
+                ]))),
+                stroke(multiple(drawcolour(style["majorRoad"]), linewidthexp(1.4, [
+                    (9, 2),
+                    (12, 3),
+                    (17, 6),
+                    (20, 20),
+                ])))
+            )
+        ),
         f_property("pmap:kind", {"major_road"})
     ),
     LayerDrawingRule(
