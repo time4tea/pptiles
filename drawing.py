@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import bisect
+import contextlib
 import dataclasses
 import math
 from typing import Set, Callable, List, Tuple
@@ -111,6 +112,15 @@ class FeatureDrawing:
         raise NotImplementedError()
 
 
+@contextlib.contextmanager
+def saved(ctx: cairo.Context):
+    try:
+        ctx.save()
+        yield
+    finally:
+        ctx.restore()
+
+
 class PolygonFeatureDrawing(FeatureDrawing):
     def __init__(self, drawing: Drawing):
         self.drawing = drawing
@@ -127,8 +137,8 @@ class PolygonFeatureDrawing(FeatureDrawing):
                         ctx.move_to(xy[0], 4096 - xy[1])
                     else:
                         ctx.line_to(xy[0], 4096 - xy[1])
-
-            self.drawing(zoom, ctx)
+            with saved(ctx):
+                self.drawing(zoom, ctx)
 
 
 class LineFeatureDrawing(FeatureDrawing):
@@ -154,7 +164,8 @@ class LineFeatureDrawing(FeatureDrawing):
                 else:
                     ctx.line_to(xy[0], 4096 - xy[1])
 
-        self.drawing(zoom, ctx)
+        with saved(ctx):
+            self.drawing(zoom, ctx)
 
 
 FeatureFilter = Callable[[dict], bool]
@@ -177,11 +188,18 @@ def f_all(*predicates: FeatureFilter) -> FeatureFilter:
 
 
 def f_property(name: str, wanted: Set[str]) -> FeatureFilter:
-    return lambda f: f.get("properties", {}).get(name, None) in wanted
+    def p(f):
+        return f.get("properties", {}).get(name, None) in wanted
+
+    return lambda f: p(f)
 
 
 def f_has(name: str) -> FeatureFilter:
     return lambda f: name in f.get("properties", {})
+
+
+def f_not(predicate: FeatureFilter) -> FeatureFilter:
+    return lambda f: not predicate(f)
 
 
 ZoomFilter = Callable[[int], bool]
@@ -211,6 +229,7 @@ class LayerDrawingRule:
             if self.layer in tile:
                 for feature in tile[self.layer]["features"]:
                     if self.filter(feature):
+                        print(f"Drawing {self.layer} -> {feature['properties']}")
                         self.drawing.draw(ctx, zoom, feature)
 
 

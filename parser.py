@@ -3,7 +3,8 @@ import pathlib
 from typing import Any, List, Optional
 
 from colour import Colour
-from drawing import LayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, f_false, FeatureFilter, f_true, f_property, f_has
+from drawing import LayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke
 
 
 class Parser:
@@ -34,9 +35,16 @@ class Parser:
                     )
                 )
             elif layer_type_ == "line":
-                pass
+                rules.append(
+                    LayerDrawingRule(
+                        layer_source_,
+                        LineFeatureDrawing(stroke(paint)),
+                        f_filter
+                    )
+                )
             else:
                 print(f"Unsupported layer type {layer_type_}")
+        return rules
 
     def parse_predicate(self, *terms) -> FeatureFilter:
         op = terms[0]
@@ -51,8 +59,10 @@ class Parser:
             return f_property(prop, set(rest))
         elif op in {"has"}:
             return f_has(prop)
+        elif op in {"!in", "!="}:
+            return f_not(f_property(prop, set(rest)))
         else:
-            print(f"Unsupported op {op}")
+            print(f"Unsupported predicate op {op}")
             return f_true()
 
     def parse_filter(self, filters: Optional[List[Any]]):
@@ -64,15 +74,25 @@ class Parser:
         if op == "all":
             predicates = [self.parse_predicate(*p) for p in filters[1:]]
             return f_all(*predicates)
+        elif op == "==":
+            return self.parse_predicate(*filters)
         else:
             print(f"Unsupported op {op}")
             return f_false()
 
-    def parse_paint(self, param) -> ContextModification:
+    def parse_paint(self, param: dict) -> ContextModification:
+
+        rules = {
+            "fill-color": lambda v: drawcolour(Colour.from_spec(v)),
+            "line-color": lambda v: drawcolour(Colour.from_spec(v)),
+        }
+
         mods = []
-        colour = param.get("fill-color")
-        if colour is not None:
-            mods.append(drawcolour(Colour.from_spec(colour)))
+
+        for k, v in param.items():
+            if k in rules:
+                mods.append(rules[k](v))
+
         return multiple(*mods)
 
 
@@ -80,3 +100,5 @@ if __name__ == "__main__":
     p = pathlib.Path("style.json")
 
     style = Parser().parse(p)
+
+    print(style)
