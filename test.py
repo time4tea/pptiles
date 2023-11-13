@@ -57,7 +57,6 @@ if __name__ == "__main__":
     pmmap = PMMap(center=(-0.264333, 51.445114), zoom=12, size=(500, 500))
 
     p = pathlib.Path("style.json")
-
     style = Parser().parse(p)
 
     with SqliteDict(filename="pmtile.sqlite", autocommit=True) as cache:

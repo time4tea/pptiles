@@ -229,7 +229,7 @@ class LayerDrawingRule:
             if self.layer in tile:
                 for feature in tile[self.layer]["features"]:
                     if self.filter(feature):
-                        print(f"Drawing {self.layer} -> {feature['properties']}")
+                        #print(f"Drawing {self.layer} -> {feature['properties']}")
                         self.drawing.draw(ctx, zoom, feature)
 
 

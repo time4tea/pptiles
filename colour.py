@@ -63,6 +63,13 @@ class Colour:
     def _rescale(t):
         return map(lambda v: v / 255.0, t)
 
+    def as_hex(self):
+        return "".join([
+            "%x" % int(self.r * 256),
+            "%x" % int(self.g * 256),
+            "%x" % int(self.b * 256),
+        ])
+
     @staticmethod
     def hex(hexcolour: str, alpha=1.0):
         if hexcolour.startswith("#"):
@@ -96,12 +103,18 @@ class Colour:
         m = hsl_expr.match(colour_spec)
         if m is not None:
             return hsl(
-                int(m.group(1)),
-                int(m.group(2)),
-                int(m.group(3))).rgb()
+                int(m.group(1)) / 360.0,
+                int(m.group(2)) / 100.0,
+                int(m.group(3)) / 100.0).rgb()
         print(f"Can't parse {colour_spec}")
         return Colour(1.0, 1.0, 1.0)
 
 
 def hsl(h, s, l, a=1.0) -> HLSColour:
     return HLSColour(h, l, s, a)
+
+
+if __name__ == "__main__":
+    c = Colour.from_spec("hsl(47, 13%, 86%)")
+    print(c)
+    print(c.as_hex())

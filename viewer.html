@@ -21,12 +21,13 @@
         scrollWheelZoom: false,
         dragging: !L.Browser.mobile,
         tap: !L.Browser.mobile,
-        maxZoom: 15.5,
+        maxZoom: 19,
     }).setView([51.505, -0.09], 13);
 
     L.tileLayer(
         'http://localhost:8000/{z}/{x}/{y}.png',
         {
+            maxNativeZoom:14
         }
     )
         .addTo(map);
