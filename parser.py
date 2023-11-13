@@ -3,7 +3,7 @@ import pathlib
 from typing import Any, List, Optional
 
 from colour import Colour
-from drawing import LayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple
+from drawing import LayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, f_false, FeatureFilter, f_true, f_property, f_has
 
 
 class Parser:
@@ -38,9 +38,35 @@ class Parser:
             else:
                 print(f"Unsupported layer type {layer_type_}")
 
+    def parse_predicate(self, *terms) -> FeatureFilter:
+        op = terms[0]
+        prop: str = terms[1]
+        rest = terms[2:]
+
+        if prop.startswith("$"):
+            print(f"Unsupported prop {prop}")
+            return f_true()
+
+        if op in {"==", "in"}:
+            return f_property(prop, set(rest))
+        elif op in {"has"}:
+            return f_has(prop)
+        else:
+            print(f"Unsupported op {op}")
+            return f_true()
+
     def parse_filter(self, filters: Optional[List[Any]]):
         if filters is None:
             return lambda x: True
+
+        op = filters[0]
+
+        if op == "all":
+            predicates = [self.parse_predicate(*p) for p in filters[1:]]
+            return f_all(*predicates)
+        else:
+            print(f"Unsupported op {op}")
+            return f_false()
 
     def parse_paint(self, param) -> ContextModification:
         mods = []

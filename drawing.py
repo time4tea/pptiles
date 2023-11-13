@@ -160,12 +160,28 @@ class LineFeatureDrawing(FeatureDrawing):
 FeatureFilter = Callable[[dict], bool]
 
 
-def f_any() -> FeatureFilter:
+def f_true() -> FeatureFilter:
     return lambda f: True
+
+
+def f_false() -> FeatureFilter:
+    return lambda f: False
+
+
+def f_any(*predicates: FeatureFilter) -> FeatureFilter:
+    return lambda f: any([p(f) for p in predicates])
+
+
+def f_all(*predicates: FeatureFilter) -> FeatureFilter:
+    return lambda f: all([p(f) for p in predicates])
 
 
 def f_property(name: str, wanted: Set[str]) -> FeatureFilter:
     return lambda f: f.get("properties", {}).get(name, None) in wanted
+
+
+def f_has(name: str) -> FeatureFilter:
+    return lambda f: name in f.get("properties", {})
 
 
 ZoomFilter = Callable[[int], bool]
@@ -203,5 +219,5 @@ if __name__ == "__main__":
         (13, 2),
         (17, 4),
         (20, 15),
-  ])
+    ])
     print(w(14))

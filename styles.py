@@ -1,5 +1,5 @@
 from colour import hsl, Colour
-from drawing import LayerDrawingRule, PolygonFeatureDrawing, LineFeatureDrawing, drawcolour, multiple, f_any, \
+from drawing import LayerDrawingRule, PolygonFeatureDrawing, LineFeatureDrawing, drawcolour, multiple, f_true, \
     f_property, fill, stroke, linewidthexp, stroke_preserve, fill_preserve, linewidth
 
 style = {
@@ -30,7 +30,7 @@ rules = [
     LayerDrawingRule(
         "earth",
         PolygonFeatureDrawing(fill(drawcolour(style["earth"]))),
-        f_any()
+        f_true()
     ),
     LayerDrawingRule(
         "natural",
@@ -80,7 +80,7 @@ rules = [
                 stroke(drawcolour(Colour.hex("ff0000"))),
             )
         ),
-        f_any()
+        f_true()
     ),
     LayerDrawingRule(
         "landuse",
@@ -145,6 +145,6 @@ rules = [
     LayerDrawingRule(
         "water",
         PolygonFeatureDrawing(fill(drawcolour(style["waterway"]))),
-        f_any()
+        f_true()
     )
 ]

@@ -7,7 +7,7 @@ from sqlitedict import SqliteDict
 
 from colour import Colour
 from drawing import PolygonFeatureDrawing, LineFeatureDrawing, LayerDrawingRule, multiple, \
-    drawcolour, linewidth, linedash, fill, f_any, f_property, stroke
+    drawcolour, linewidth, linedash, fill, f_true, f_property, stroke
 from image import to_pillow
 from maps import PMMap, RequestsSource, PMReader, FileSource
 from styles import style, rules
@@ -18,7 +18,7 @@ test_rules = [
         PolygonFeatureDrawing(
             drawing=fill(multiple(drawcolour(style["earth"])), )
         ),
-        f_any()
+        f_true()
     ),
     LayerDrawingRule(
         "landuse",
