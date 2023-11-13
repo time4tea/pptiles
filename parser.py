@@ -15,29 +15,36 @@ class Parser:
         rules = []
 
         for layer in j["layers"]:
+
             layer_type_ = layer["type"]
 
             if layer_type_ == "background":
                 continue
 
+            layer_source_ = layer["source"]
+
+            if layer_source_ != "openmaptiles":
+                continue
+
             layer_id_ = layer["id"]
-            layer_source_ = layer["source-layer"]
+            source_layer_ = layer["source-layer"]
 
             f_filter = self.parse_filter(layer.get("filter"))
-            paint = self.parse_paint(layer.get("paint"))
 
             if layer_type_ == "fill":
+                paint = self.parse_paint(layer.get("paint"))
                 rules.append(
                     LayerDrawingRule(
-                        layer_source_,
+                        source_layer_,
                         PolygonFeatureDrawing(fill(paint)),
                         f_filter
                     )
                 )
             elif layer_type_ == "line":
+                paint = self.parse_paint(layer.get("paint"))
                 rules.append(
                     LayerDrawingRule(
-                        layer_source_,
+                        source_layer_,
                         LineFeatureDrawing(stroke(paint)),
                         f_filter
                     )
@@ -97,7 +104,7 @@ class Parser:
 
 
 if __name__ == "__main__":
-    p = pathlib.Path("style.json")
+    p = pathlib.Path("style2.json")
 
     style = Parser().parse(p)
 

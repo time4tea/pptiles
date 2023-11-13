@@ -8,7 +8,6 @@ from sqlitedict import SqliteDict
 
 from maps import RequestsSource, PMReader, XYZ, FileSource
 from parser import Parser
-from styles import rules
 from test import draw
 
 app = bottle.default_app()
@@ -22,7 +21,7 @@ source = RequestsSource(
 filesource = FileSource(Path("map.pmtiles"))
 reader = PMReader(filesource)
 
-p = pathlib.Path("style.json")
+p = pathlib.Path("style2.json")
 style = Parser().parse(p)
 
 
