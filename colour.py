@@ -29,7 +29,6 @@ class HLSColour:
 
 rgb_expr = re.compile(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
 rgba_expr = re.compile(r"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
-hex_expr = re.compile(r"#(([a-fA-F0-9][a-fA-F0-9]){3})")
 hsl_expr = re.compile(r"hsl\((\d+),\s+(\d+)%,\s*(\d+)%\)")
 
 
@@ -88,18 +87,41 @@ class Colour:
     def from_spec(cls, colour_spec) -> 'Colour':
         m = rgb_expr.match(colour_spec)
         if m is not None:
-            pass
+            return Colour(
+                int(m.group(1)) / 255.0,
+                int(m.group(2)) / 255.0,
+                int(m.group(3)) / 255.0,
+            )
         m = rgba_expr.match(colour_spec)
         if m is not None:
             return Colour(
-                int(m.group(1)) / 256.0,
-                int(m.group(2)) / 256.0,
-                int(m.group(3)) / 256.0,
+                int(m.group(1)) / 255.0,
+                int(m.group(2)) / 255.0,
+                int(m.group(3)) / 255.0,
                 float(m.group(4))
             )
-        m = hex_expr.match(colour_spec)
-        if m is not None:
-            return Colour.hex(m.group(1))
+        if colour_spec.startswith("#"):
+            hex_spec = colour_spec[1:]
+            if len(hex_spec) == 3:
+                return Colour(
+                    int(hex_spec[0]*2, 16) / 255.0,
+                    int(hex_spec[1]*2, 16) / 255.0,
+                    int(hex_spec[2]*2, 16) / 255.0,
+                )
+            elif len(hex_spec) == 6:
+                return Colour(
+                    int(hex_spec[0:2], 16) / 255.0,
+                    int(hex_spec[2:4], 16) / 255.0,
+                    int(hex_spec[4:6], 16) / 255.0,
+                )
+            elif len(hex_spec) == 8:
+                return Colour(
+                    int(hex_spec[0:2], 16) / 255.0,
+                    int(hex_spec[2:4], 16) / 255.0,
+                    int(hex_spec[4:6], 16) / 255.0,
+                    int(hex_spec[6:8], 16) / 255.0,
+                )
+
         m = hsl_expr.match(colour_spec)
         if m is not None:
             return hsl(
@@ -115,6 +137,6 @@ def hsl(h, s, l, a=1.0) -> HLSColour:
 
 
 if __name__ == "__main__":
-    c = Colour.from_spec("hsl(47, 13%, 86%)")
+    c = Colour.from_spec("rgb(236,238,204)")
     print(c)
     print(c.as_hex())

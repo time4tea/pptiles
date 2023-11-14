@@ -4,7 +4,7 @@ from typing import Any, List, Optional
 
 from colour import Colour
 from drawing import LayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
-    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp
 
 
 class Parser:
@@ -59,8 +59,12 @@ class Parser:
         rest = terms[2:]
 
         if prop.startswith("$"):
-            print(f"Unsupported prop {prop}")
-            return f_true()
+            gprop = prop.replace("$", "")
+            if op in { "==", "in"}:
+                return f_geometry(gprop, set(rest))
+            else:
+                print(f"Unsupported prop {prop} op {op}")
+                return f_true()
 
         if op in {"==", "in"}:
             return f_property(prop, set(rest))
@@ -87,11 +91,21 @@ class Parser:
             print(f"Unsupported op {op}")
             return f_false()
 
+    def parse_line_width(self, rule: dict):
+        if "base" in rule:
+            return linewidthexp(
+                rule["base"],
+                rule["stops"]
+            )
+        else:
+            return nothing()
+
     def parse_paint(self, param: dict) -> ContextModification:
 
         rules = {
             "fill-color": lambda v: drawcolour(Colour.from_spec(v)),
             "line-color": lambda v: drawcolour(Colour.from_spec(v)),
+            "line-width": lambda v: self.parse_line_width(v),
         }
 
         mods = []

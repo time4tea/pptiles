@@ -13,6 +13,10 @@ from colour import Colour
 ContextModification = Callable[[int, cairo.Context], None]
 
 
+def nothing() -> ContextModification:
+    return lambda z: None
+
+
 def multiple(*ms: ContextModification) -> ContextModification:
     def f(z: int, ctx: cairo.Context):
         [m(z, ctx) for m in ms]
@@ -187,6 +191,13 @@ def f_all(*predicates: FeatureFilter) -> FeatureFilter:
     return lambda f: all([p(f) for p in predicates])
 
 
+def f_geometry(name: str, wanted: Set[str]) -> FeatureFilter:
+    def g(f):
+        return f.get("geometry", {}).get(name, None) in wanted
+
+    return lambda f: g(f)
+
+
 def f_property(name: str, wanted: Set[str]) -> FeatureFilter:
     def p(f):
         return f.get("properties", {}).get(name, None) in wanted
@@ -229,7 +240,7 @@ class LayerDrawingRule:
             if self.layer in tile:
                 for feature in tile[self.layer]["features"]:
                     if self.filter(feature):
-                        #print(f"Drawing {self.layer} -> {feature['properties']}")
+                        # print(f"Drawing {self.layer} -> {feature['properties']}")
                         self.drawing.draw(ctx, zoom, feature)
 
 
