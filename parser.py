@@ -4,7 +4,7 @@ from typing import Any, List, Optional
 
 from colour import Colour
 from drawing import LayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
-    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp
 
 
 class Parser:
@@ -118,8 +118,10 @@ class Parser:
 
 
 if __name__ == "__main__":
-    p = pathlib.Path("style2.json")
+    # p = pathlib.Path("style2.json")
+    # style = Parser().parse(p)
+    # print(style)
 
-    style = Parser().parse(p)
 
-    print(style)
+    x = widthexp(1.2, [(5, 0.4), (6, 0.7), (7, 1.75), (20, 22)])
+    print(x(13))

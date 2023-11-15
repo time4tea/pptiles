@@ -54,7 +54,8 @@ def widthexp(base: float, stops: List[Tuple[int, int]]) -> Callable[[int], float
             return stops[-1][1]
         i = bisect.bisect_left(stops, z, key=lambda s: s[0]) - 1
         factor = fact(z, i)
-        return lerp(factor, stops[i][1], stops[i + 1][1])
+        w = lerp(factor, stops[i][1], stops[i + 1][1])
+        return w * 5  # i don't know why this need multiplying. too small otherwise..
 
     return f
 
