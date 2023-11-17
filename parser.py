@@ -117,6 +117,8 @@ class Parser:
         for k, v in param.items():
             if k in rules:
                 mods.append(rules[k](v))
+            else:
+                print(f"No rule for {k}")
 
         return multiple(*mods)
 

@@ -77,7 +77,7 @@ class Colour:
         return Colour(r, g, b, alpha)
 
     @staticmethod
-    def from_pil(r, g, b, a=255):
+    def from_pil(r, g, b, a=255.0):
         return Colour(*Colour._rescale((r, g, b, a)))
 
     def apply_to(self, context: cairo.Context):
@@ -87,39 +87,39 @@ class Colour:
     def from_spec(cls, colour_spec) -> 'Colour':
         m = rgb_expr.match(colour_spec)
         if m is not None:
-            return Colour(
-                int(m.group(1)) / 255.0,
-                int(m.group(2)) / 255.0,
-                int(m.group(3)) / 255.0,
+            return Colour.from_pil(
+                int(m.group(1)),
+                int(m.group(2)),
+                int(m.group(3)),
             )
         m = rgba_expr.match(colour_spec)
         if m is not None:
-            return Colour(
-                int(m.group(1)) / 255.0,
-                int(m.group(2)) / 255.0,
-                int(m.group(3)) / 255.0,
-                float(m.group(4))
+            return Colour.from_pil(
+                int(m.group(1)),
+                int(m.group(2)),
+                int(m.group(3)),
+                float(m.group(4)) * 255
             )
         if colour_spec.startswith("#"):
             hex_spec = colour_spec[1:]
             if len(hex_spec) == 3:
-                return Colour(
-                    int(hex_spec[0]*2, 16) / 255.0,
-                    int(hex_spec[1]*2, 16) / 255.0,
-                    int(hex_spec[2]*2, 16) / 255.0,
+                return Colour.from_pil(
+                    int(hex_spec[0]*2, 16),
+                    int(hex_spec[1]*2, 16),
+                    int(hex_spec[2]*2, 16),
                 )
             elif len(hex_spec) == 6:
-                return Colour(
-                    int(hex_spec[0:2], 16) / 255.0,
-                    int(hex_spec[2:4], 16) / 255.0,
-                    int(hex_spec[4:6], 16) / 255.0,
+                return Colour.from_pil(
+                    int(hex_spec[0:2], 16),
+                    int(hex_spec[2:4], 16),
+                    int(hex_spec[4:6], 16),
                 )
             elif len(hex_spec) == 8:
-                return Colour(
-                    int(hex_spec[0:2], 16) / 255.0,
-                    int(hex_spec[2:4], 16) / 255.0,
-                    int(hex_spec[4:6], 16) / 255.0,
-                    int(hex_spec[6:8], 16) / 255.0,
+                return Colour.from_pil(
+                    int(hex_spec[0:2], 16),
+                    int(hex_spec[2:4], 16),
+                    int(hex_spec[4:6], 16),
+                    int(hex_spec[6:8], 16),
                 )
 
         m = hsl_expr.match(colour_spec)
