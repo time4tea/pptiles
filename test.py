@@ -7,22 +7,22 @@ from mapbox_vector_tile.decoder import TileData
 from sqlitedict import SqliteDict
 
 from colour import Colour
-from drawing import PolygonFeatureDrawing, LineFeatureDrawing, LayerDrawingRule, multiple, \
-    drawcolour, linewidth, linedash, fill, f_true, f_property, stroke
+from drawing import PolygonFeatureDrawing, LineFeatureDrawing, FeatureLayerDrawingRule, multiple, \
+    drawcolour, linewidth, linedash, fill, f_true, f_property, stroke, LayerDrawingRule, draw
 from image import to_pillow
 from maps import PMMap, RequestsSource, PMReader, FileSource
 from parser import Parser
 from styles import style, rules
 
 test_rules = [
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "earth",
         PolygonFeatureDrawing(
             drawing=fill(multiple(drawcolour(style["earth"])), )
         ),
         f_true()
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "landuse",
         PolygonFeatureDrawing(
             drawing=fill(drawcolour(style["residential"]))
@@ -30,7 +30,7 @@ test_rules = [
         f_property("landuse", {"residential", "neighbourhood"})
     ),
 
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(
             drawing=stroke(multiple(drawcolour(Colour.hex("ffffff")), linewidth(5), linedash(20, 10)))),
@@ -39,24 +39,11 @@ test_rules = [
 ]
 
 
-def draw(rules: List[LayerDrawingRule], zoom: int, tile: dict, size=256) -> cairo.ImageSurface:
-
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
-    ctx = cairo.Context(surface)
-    ctx.scale(size / 4096, size / 4096)
-
-    ctx.set_line_width(2)
-
-    for rule in rules:
-        rule.draw(ctx, zoom, tile)
-
-    return surface
-
 
 if __name__ == "__main__":
     pmmap = PMMap(center=(-0.264333, 51.445114), zoom=12, size=(500, 500))
 
-    p = pathlib.Path("style.json")
+    p = pathlib.Path("style2.json")
     style = Parser().parse(p)
 
     with SqliteDict(filename="pmtile.sqlite", autocommit=True) as cache:

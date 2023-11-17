@@ -229,8 +229,24 @@ def between(i: int, j: int) -> ZoomFilter:
     return lambda z: i <= z <= j
 
 
-@dataclasses.dataclass(frozen=True)
 class LayerDrawingRule:
+    def draw(self, ctx: cairo.Context, zoom: int, tile: dict):
+        raise NotImplementedError()
+
+
+class BackgroundLayerDrawingRule(LayerDrawingRule):
+
+    def __init__(self, drawing: Drawing):
+        self.drawing = drawing
+
+    def draw(self, ctx: cairo.Context, zoom: int, tile: dict):
+        target:cairo.ImageSurface = ctx.get_target()
+        nctx = cairo.Context(target)
+        nctx.rectangle(0,0, target.get_width(), target.get_height())
+        self.drawing(0, nctx)
+
+@dataclasses.dataclass(frozen=True)
+class FeatureLayerDrawingRule(LayerDrawingRule):
     layer: str
     drawing: FeatureDrawing
     filter: FeatureFilter
@@ -243,6 +259,22 @@ class LayerDrawingRule:
                     if self.filter(feature):
                         # print(f"Drawing {self.layer} -> {feature['properties']}")
                         self.drawing.draw(ctx, zoom, feature)
+
+
+
+def draw(rules: List[LayerDrawingRule], zoom: int, tile: dict, size=256) -> cairo.ImageSurface:
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    ctx = cairo.Context(surface)
+    ctx.scale(size / 4096, size / 4096)
+
+    ctx.set_line_width(2)
+
+    for rule in rules:
+        rule.draw(ctx, zoom, tile)
+
+    return surface
+
 
 
 if __name__ == "__main__":

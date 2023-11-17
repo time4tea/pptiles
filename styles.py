@@ -1,5 +1,5 @@
 from colour import hsl, Colour
-from drawing import LayerDrawingRule, PolygonFeatureDrawing, LineFeatureDrawing, drawcolour, multiple, f_true, \
+from drawing import FeatureLayerDrawingRule, PolygonFeatureDrawing, LineFeatureDrawing, drawcolour, multiple, f_true, \
     f_property, fill, stroke, linewidthexp, stroke_preserve, fill_preserve, linewidth
 
 style = {
@@ -27,42 +27,42 @@ style = {
     "waterway": Colour.hex("94C1E1")
 }
 rules = [
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "earth",
         PolygonFeatureDrawing(fill(drawcolour(style["earth"]))),
         f_true()
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "natural",
         PolygonFeatureDrawing(fill(drawcolour(style["wood"]))),
         f_property("natural", {"wood"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "natural",
         PolygonFeatureDrawing(fill(drawcolour(style["sand"]))),
         f_property("natural", {"sand"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "landuse",
         PolygonFeatureDrawing(fill(drawcolour(style["residential"]))),
         f_property("landuse", {"residential", "neighbourhood"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "landuse",
         PolygonFeatureDrawing(fill(drawcolour(style["hospital"]))),
         f_property("amenity", {"hospital"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "landuse",
         PolygonFeatureDrawing(fill(drawcolour(style["school"]))),
         f_property("amenity", {"school", "kindergarten", "university", "college"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "landuse",
         PolygonFeatureDrawing(fill(drawcolour(style["industrial"]))),
         f_property("landuse", {"industrial"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "landuse",
         PolygonFeatureDrawing(
             multiple(
@@ -72,7 +72,7 @@ rules = [
         ),
         f_property("landuse", {"grass"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "buildings",
         PolygonFeatureDrawing(
             multiple(
@@ -82,22 +82,22 @@ rules = [
         ),
         f_true()
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "landuse",
         PolygonFeatureDrawing(fill(drawcolour(style["park"]))),
         f_property("landuse", {"park"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(stroke(multiple(drawcolour(style["highwayOuter"]), linewidth(5)))),
         f_property("pmap:kind", {"highway"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(stroke(multiple(drawcolour(style["highway"]), linewidth(4)))),
         f_property("pmap:kind", {"highway"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(
             multiple(
@@ -117,32 +117,32 @@ rules = [
         ),
         f_property("pmap:kind", {"major_road"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(stroke(multiple(drawcolour(style["majorRoad"]), linewidth(3)))),
         f_property("pmap:kind", {"major_road"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(stroke(multiple(drawcolour(style["mediumRoadOuter"]), linewidth(3)))),
         f_property("pmap:kind", {"medium_road"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(stroke(multiple(drawcolour(style["mediumRoad"]), linewidth(2)))),
         f_property("pmap:kind", {"medium_road"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(stroke(multiple(drawcolour(style["minorRoadOuter"]), linewidth(2)))),
         f_property("pmap:kind", {"minor_road"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "roads",
         LineFeatureDrawing(stroke(multiple(drawcolour(style["minorRoad"]), linewidth(1)))),
         f_property("pmap:kind", {"minor_road"})
     ),
-    LayerDrawingRule(
+    FeatureLayerDrawingRule(
         "water",
         PolygonFeatureDrawing(fill(drawcolour(style["waterway"]))),
         f_true()

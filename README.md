@@ -4,12 +4,12 @@ A pmtiles renderer in python using cairo
 
 ## Example
 
-![Example](examples/2023-11-01.png)
+![Example](examples/2023-11-17.png)
 
 ### Features
 
 - Download pmtiles 
-- Render with a simple ruleset
+- Render with (subset) maputnik styles
 - Some caching
 
 

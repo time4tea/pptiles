@@ -3,8 +3,8 @@ import pathlib
 from typing import Any, List, Optional
 
 from colour import Colour
-from drawing import LayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
-    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp
+from drawing import FeatureLayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule
 
 
 class Parser:
@@ -19,6 +19,9 @@ class Parser:
             layer_type_ = layer["type"]
 
             if layer_type_ == "background":
+                rules.append(BackgroundLayerDrawingRule(
+                    fill(self.parse_paint(layer.get("paint")))
+                ))
                 continue
 
             layer_source_ = layer["source"]
@@ -34,7 +37,7 @@ class Parser:
             if layer_type_ == "fill":
                 paint = self.parse_paint(layer.get("paint"))
                 rules.append(
-                    LayerDrawingRule(
+                    FeatureLayerDrawingRule(
                         source_layer_,
                         PolygonFeatureDrawing(fill(paint)),
                         f_filter
@@ -43,7 +46,7 @@ class Parser:
             elif layer_type_ == "line":
                 paint = self.parse_paint(layer.get("paint"))
                 rules.append(
-                    LayerDrawingRule(
+                    FeatureLayerDrawingRule(
                         source_layer_,
                         LineFeatureDrawing(stroke(paint)),
                         f_filter
@@ -60,7 +63,7 @@ class Parser:
 
         if prop.startswith("$"):
             gprop = prop.replace("$", "")
-            if op in { "==", "in"}:
+            if op in {"==", "in"}:
                 return f_geometry(gprop, set(rest))
             else:
                 print(f"Unsupported prop {prop} op {op}")
@@ -104,6 +107,7 @@ class Parser:
 
         rules = {
             "fill-color": lambda v: drawcolour(Colour.from_spec(v)),
+            "background-color": lambda v: drawcolour(Colour.from_spec(v)),
             "line-color": lambda v: drawcolour(Colour.from_spec(v)),
             "line-width": lambda v: self.parse_line_width(v),
         }
@@ -121,7 +125,6 @@ if __name__ == "__main__":
     # p = pathlib.Path("style2.json")
     # style = Parser().parse(p)
     # print(style)
-
 
     x = widthexp(1.2, [(5, 0.4), (6, 0.7), (7, 1.75), (20, 22)])
     print(x(13))
