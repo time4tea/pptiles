@@ -15,3 +15,7 @@ pillow==9.4.0
 
 #for web server example
 bottle
+
+#for profiling
+viztracer
+

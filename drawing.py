@@ -14,7 +14,7 @@ ContextModification = Callable[[int, cairo.Context], None]
 
 
 def nothing() -> ContextModification:
-    return lambda z: None
+    return lambda z, ctx: None
 
 
 def multiple(*ms: ContextModification) -> ContextModification:
@@ -22,6 +22,14 @@ def multiple(*ms: ContextModification) -> ContextModification:
         [m(z, ctx) for m in ms]
 
     return f
+
+
+def linecap(cap: cairo.LineCap) -> ContextModification:
+    return lambda z, ctx: ctx.set_line_cap(cap)
+
+
+def linejoin(join: cairo.LineJoin) -> ContextModification:
+    return lambda z, ctx: ctx.set_line_join(join)
 
 
 def drawcolour(c: Colour) -> ContextModification:
@@ -193,17 +201,11 @@ def f_all(*predicates: FeatureFilter) -> FeatureFilter:
 
 
 def f_geometry(name: str, wanted: Set[str]) -> FeatureFilter:
-    def g(f):
-        return f.get("geometry", {}).get(name, None) in wanted
-
-    return lambda f: g(f)
+    return lambda f: f.get("geometry", {}).get(name, None) in wanted
 
 
 def f_property(name: str, wanted: Set[str]) -> FeatureFilter:
-    def p(f):
-        return f.get("properties", {}).get(name, None) in wanted
-
-    return lambda f: p(f)
+    return lambda f: f.get("properties", {}).get(name, None) in wanted
 
 
 def f_has(name: str) -> FeatureFilter:
@@ -240,7 +242,8 @@ class LayerDrawingRule:
 
 class BackgroundLayerDrawingRule(LayerDrawingRule):
 
-    def __init__(self, drawing: Drawing):
+    def __init__(self, id: str, drawing: Drawing):
+        self.id = id
         self.drawing = drawing
 
     def draw(self, ctx: cairo.Context, zoom: int, tile: dict):
@@ -255,6 +258,7 @@ class FeatureLayerDrawingRule(LayerDrawingRule):
     layer: str
     drawing: FeatureDrawing
     filter: FeatureFilter
+    id: str = "unspecified"
     zooms: ZoomFilter = z_all()
 
     def draw(self, ctx: cairo.Context, zoom: int, tile: dict):

@@ -2,9 +2,11 @@ import json
 import pathlib
 from typing import Any, List, Optional
 
+import cairo
+
 from colour import Colour
 from drawing import FeatureLayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
-    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule, ZoomFilter, z_between
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule, ZoomFilter, z_between, linecap, linejoin
 
 
 class Parser:
@@ -16,11 +18,13 @@ class Parser:
 
         for layer in j["layers"]:
 
+            layer_id_ = layer["id"]
             layer_type_ = layer["type"]
 
             if layer_type_ == "background":
                 rules.append(BackgroundLayerDrawingRule(
-                    fill(self.parse_paint(layer.get("paint")))
+                    id=layer_id_,
+                    drawing=fill(self.parse_paint(layer.get("paint")))
                 ))
                 continue
 
@@ -28,7 +32,6 @@ class Parser:
 
             if layer_source_ != "openmaptiles":
                 continue
-
 
             z_filter = self.parse_zooms(layer)
 
@@ -43,6 +46,7 @@ class Parser:
                         source_layer_,
                         PolygonFeatureDrawing(fill(paint)),
                         f_filter,
+                        layer_id_,
                         z_filter
                     )
                 )
@@ -53,6 +57,7 @@ class Parser:
                         source_layer_,
                         LineFeatureDrawing(stroke(paint)),
                         f_filter,
+                        layer_id_,
                         z_filter
                     )
                 )
@@ -83,6 +88,8 @@ class Parser:
             return f_property(prop, set(rest))
         elif op in {"has"}:
             return f_has(prop)
+        elif op in {"!has"}:
+            return f_not(f_has(prop))
         elif op in {"!in", "!="}:
             return f_not(f_property(prop, set(rest)))
         else:
@@ -113,6 +120,29 @@ class Parser:
         else:
             return nothing()
 
+    def parse_line_cap(self, v) -> ContextModification:
+        if v == "butt":
+            return linecap(cairo.LINE_CAP_BUTT)
+        elif v == "square":
+            return linecap(cairo.LINE_CAP_SQUARE)
+        elif v == "round":
+            return linecap(cairo.LINE_CAP_ROUND)
+        else:
+            print(f"Unknown cap {v}")
+            return nothing()
+
+    def parse_line_join(self, v) -> ContextModification:
+        if v == "bevel":
+            return linejoin(cairo.LINE_JOIN_BEVEL)
+        elif v == "miter":
+            return linejoin(cairo.LINE_JOIN_MITER)
+        elif v == "round":
+            return linejoin(cairo.LINE_JOIN_ROUND)
+        else:
+            print(f"Unknown join {v}")
+            return nothing()
+
+
     def parse_paint(self, param: dict) -> ContextModification:
 
         rules = {
@@ -120,6 +150,8 @@ class Parser:
             "background-color": lambda v: drawcolour(Colour.from_spec(v)),
             "line-color": lambda v: drawcolour(Colour.from_spec(v)),
             "line-width": lambda v: self.parse_line_width(v),
+            "line-cap": lambda v: self.parse_line_cap(v),
+            "line-join": lambda v: self.parse_line_join(v)
         }
 
         mods = []
@@ -133,7 +165,6 @@ class Parser:
         if len(mods) == 0:
             mods.append(rules["fill-color"]("#ff0000"))
             print("Hmmm.. no drawing rules")
-
 
         return multiple(*mods)
 
