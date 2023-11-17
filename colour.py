@@ -30,6 +30,7 @@ class HLSColour:
 rgb_expr = re.compile(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
 rgba_expr = re.compile(r"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
 hsl_expr = re.compile(r"hsl\((\d+),\s+(\d+)%,\s*(\d+)%\)")
+hsla_expr = re.compile(r"hsla\((\d+),\s+(\d+)%,\s*(\d+)%,\s*([\d.]+)\s*\)")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -128,6 +129,15 @@ class Colour:
                 int(m.group(1)) / 360.0,
                 int(m.group(2)) / 100.0,
                 int(m.group(3)) / 100.0).rgb()
+
+        m = hsla_expr.match(colour_spec)
+        if m is not None:
+            return hsl(
+                int(m.group(1)) / 360.0,
+                int(m.group(2)) / 100.0,
+                int(m.group(3)) / 100.0,
+                float(m.group(4)),
+            ).rgb()
         print(f"Can't parse {colour_spec}")
         return Colour(1.0, 1.0, 1.0)
 
@@ -137,6 +147,6 @@ def hsl(h, s, l, a=1.0) -> HLSColour:
 
 
 if __name__ == "__main__":
-    c = Colour.from_spec("rgb(236,238,204)")
+    c = Colour.from_spec("hsla(35, 57%, 88%, 0.49)")
     print(c)
     print(c.as_hex())
