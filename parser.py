@@ -4,7 +4,7 @@ from typing import Any, List, Optional
 
 from colour import Colour
 from drawing import FeatureLayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
-    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule, ZoomFilter, z_between
 
 
 class Parser:
@@ -29,7 +29,9 @@ class Parser:
             if layer_source_ != "openmaptiles":
                 continue
 
-            layer_id_ = layer["id"]
+
+            z_filter = self.parse_zooms(layer)
+
             source_layer_ = layer["source-layer"]
 
             f_filter = self.parse_filter(layer.get("filter"))
@@ -40,7 +42,8 @@ class Parser:
                     FeatureLayerDrawingRule(
                         source_layer_,
                         PolygonFeatureDrawing(fill(paint)),
-                        f_filter
+                        f_filter,
+                        z_filter
                     )
                 )
             elif layer_type_ == "line":
@@ -49,12 +52,19 @@ class Parser:
                     FeatureLayerDrawingRule(
                         source_layer_,
                         LineFeatureDrawing(stroke(paint)),
-                        f_filter
+                        f_filter,
+                        z_filter
                     )
                 )
             else:
                 print(f"Unsupported layer type {layer_type_}")
         return rules
+
+    def parse_zooms(self, layer) -> ZoomFilter:
+        max_zoom = int(layer.get("maxzoom", 100))
+        min_zoom = int(layer.get("minzoom", 0))
+
+        return z_between(min_zoom, max_zoom)
 
     def parse_predicate(self, *terms) -> FeatureFilter:
         op = terms[0]
@@ -119,6 +129,11 @@ class Parser:
                 mods.append(rules[k](v))
             else:
                 print(f"No rule for {k}")
+
+        if len(mods) == 0:
+            mods.append(rules["fill-color"]("#ff0000"))
+            print("Hmmm.. no drawing rules")
+
 
         return multiple(*mods)
 

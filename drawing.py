@@ -217,15 +217,19 @@ def f_not(predicate: FeatureFilter) -> FeatureFilter:
 ZoomFilter = Callable[[int], bool]
 
 
-def above(i: int) -> ZoomFilter:
+def z_all() -> ZoomFilter:
+    return lambda z: True
+
+
+def z_above(i: int) -> ZoomFilter:
     return lambda z: z >= i
 
 
-def below(i: int) -> ZoomFilter:
+def z_below(i: int) -> ZoomFilter:
     return lambda z: z <= i
 
 
-def between(i: int, j: int) -> ZoomFilter:
+def z_between(i: int, j: int) -> ZoomFilter:
     return lambda z: i <= z <= j
 
 
@@ -240,17 +244,18 @@ class BackgroundLayerDrawingRule(LayerDrawingRule):
         self.drawing = drawing
 
     def draw(self, ctx: cairo.Context, zoom: int, tile: dict):
-        target:cairo.ImageSurface = ctx.get_target()
+        target: cairo.ImageSurface = ctx.get_target()
         nctx = cairo.Context(target)
-        nctx.rectangle(0,0, target.get_width(), target.get_height())
+        nctx.rectangle(0, 0, target.get_width(), target.get_height())
         self.drawing(0, nctx)
+
 
 @dataclasses.dataclass(frozen=True)
 class FeatureLayerDrawingRule(LayerDrawingRule):
     layer: str
     drawing: FeatureDrawing
     filter: FeatureFilter
-    zooms: ZoomFilter = lambda z: True
+    zooms: ZoomFilter = z_all()
 
     def draw(self, ctx: cairo.Context, zoom: int, tile: dict):
         if self.zooms(zoom):
@@ -261,9 +266,7 @@ class FeatureLayerDrawingRule(LayerDrawingRule):
                         self.drawing.draw(ctx, zoom, feature)
 
 
-
 def draw(rules: List[LayerDrawingRule], zoom: int, tile: dict, size=256) -> cairo.ImageSurface:
-
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     ctx = cairo.Context(surface)
     ctx.scale(size / 4096, size / 4096)
@@ -274,7 +277,6 @@ def draw(rules: List[LayerDrawingRule], zoom: int, tile: dict, size=256) -> cair
         rule.draw(ctx, zoom, tile)
 
     return surface
-
 
 
 if __name__ == "__main__":
