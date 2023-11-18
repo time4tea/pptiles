@@ -4,6 +4,7 @@ A pmtiles renderer in python using cairo
 
 ## Example
 
+![Example](examples/map.png)
 ![Example](examples/2023-11-17.png)
 
 ### Features

@@ -41,7 +41,7 @@ test_rules = [
 
 
 if __name__ == "__main__":
-    pmmap = PMMap(center=(-0.264333, 51.445114), zoom=12, size=(500, 500))
+    pmmap = PMMap(center=(-0.3097, 51.4118), zoom=14, size=(500, 500))
 
     p = pathlib.Path("style2.json")
     style = Parser().parse(p)
@@ -56,4 +56,6 @@ if __name__ == "__main__":
         for tile in pmmap.tiles()[0:1]:
             message = TileData(reader.xyz(tile.xyz)).get_message()
 
-            to_pillow(draw(style, tile.xyz.z, message, 1024)).show()
+            img=to_pillow(draw(style, tile.xyz.z, message, 1024))
+            img.show()
+            img.save("output.png","PNG")
