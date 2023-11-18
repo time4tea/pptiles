@@ -135,25 +135,31 @@ def saved(ctx: cairo.Context):
 
 
 
-
+def do_primitive(ctx, lines_or_polys):
+    for line in lines_or_polys:
+        for i, xy in enumerate(line):
+            if i == 0:
+                ctx.move_to(xy[0], 4096 - xy[1])
+            else:
+                ctx.line_to(xy[0], 4096 - xy[1])
 class PolygonFeatureDrawing(FeatureDrawing):
     def __init__(self, drawing: Drawing):
         self.drawing = drawing
 
     def draw(self, ctx: cairo.Context, zoom, feature):
         geometry = feature["geometry"]
-        if geometry["type"] != "Polygon":
-            pass
-            # print(f"unsupported feature type {geometry['type']}")
+        geometry_type_ = geometry["type"]
+
+        if geometry_type_ == "Polygon":
+            do_primitive(ctx, geometry["coordinates"])
+        elif geometry_type_ == "MultiPolygon":
+            [do_primitive(ctx, g) for g in geometry["coordinates"]]
         else:
-            for poly in geometry["coordinates"]:
-                for i, xy in enumerate(poly):
-                    if i == 0:
-                        ctx.move_to(xy[0], 4096 - xy[1])
-                    else:
-                        ctx.line_to(xy[0], 4096 - xy[1])
-            with saved(ctx):
-                self.drawing(zoom, ctx)
+            print(f"unsupported feature type {geometry['type']}")
+            return
+
+        with saved(ctx):
+            self.drawing(zoom, ctx)
 
 
 class LineFeatureDrawing(FeatureDrawing):
@@ -168,16 +174,13 @@ class LineFeatureDrawing(FeatureDrawing):
             lines = [geometry["coordinates"]]
         elif geometry_type_ == "MultiLineString":
             lines = geometry["coordinates"]
+        elif geometry_type_ == "Polygon":
+            lines = geometry["coordinates"]
         else:
             print(f"unsupported feature type {geometry_type_}")
             return
 
-        for line in lines:
-            for i, xy in enumerate(line):
-                if i == 0:
-                    ctx.move_to(xy[0], 4096 - xy[1])
-                else:
-                    ctx.line_to(xy[0], 4096 - xy[1])
+        do_primitive(ctx, lines)
 
         with saved(ctx):
             self.drawing(zoom, ctx)

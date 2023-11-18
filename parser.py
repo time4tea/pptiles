@@ -6,7 +6,7 @@ import cairo
 
 from colour import Colour
 from drawing import FeatureLayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
-    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule, ZoomFilter, z_between, linecap, linejoin
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule, ZoomFilter, z_between, linecap, linejoin, linedash
 
 
 class Parser:
@@ -142,6 +142,8 @@ class Parser:
             print(f"Unknown join {v}")
             return nothing()
 
+    def parse_line_dash(self, d):
+        return linedash(*[v * 4.0 for v in d])
 
     def parse_paint(self, param: dict) -> ContextModification:
 
@@ -151,7 +153,8 @@ class Parser:
             "line-color": lambda v: drawcolour(Colour.from_spec(v)),
             "line-width": lambda v: self.parse_line_width(v),
             "line-cap": lambda v: self.parse_line_cap(v),
-            "line-join": lambda v: self.parse_line_join(v)
+            "line-join": lambda v: self.parse_line_join(v),
+            "line-dasharray": lambda v: self.parse_line_dash(v),
         }
 
         mods = []
