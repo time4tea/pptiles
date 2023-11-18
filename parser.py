@@ -6,7 +6,8 @@ import cairo
 
 from colour import Colour
 from drawing import FeatureLayerDrawingRule, PolygonFeatureDrawing, fill, drawcolour, ContextModification, multiple, f_all, \
-    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule, ZoomFilter, z_between, linecap, linejoin, linedash
+    f_false, FeatureFilter, f_true, f_property, f_has, f_not, LineFeatureDrawing, stroke, f_geometry, nothing, linewidthexp, widthexp, BackgroundLayerDrawingRule, ZoomFilter, z_between, linecap, linejoin, linedash, CircleFeatureDrawing, \
+    TextFeatureDrawing
 
 
 class Parser:
@@ -61,6 +62,35 @@ class Parser:
                         z_filter
                     )
                 )
+            elif layer_type_ == "circle":
+                rules.append(FeatureLayerDrawingRule(
+                    source_layer_,
+                    CircleFeatureDrawing(fill(self.parse_circle_paint(layer.get("paint")))),
+                    f_filter,
+                    layer_id_,
+                    z_filter
+                ))
+            elif layer_type_ == "symbol_xx":
+                layout = layer.get("layout", {})
+                paint = layer.get("paint", {})
+                if "text-field" in layout:
+                    rules.append(FeatureLayerDrawingRule(
+                        source_layer_,
+                        TextFeatureDrawing(
+                            font_name=layout["text-font"][0],
+                            field_name=layout["text-field"].replace("{", "").replace("}",""),
+                            text_anchor=layout.get("text-anchor", "center"),
+                            text_colour=Colour.from_spec(paint["text-color"]),
+                            halo_colour=Colour.from_spec(paint.get("text-halo-color")),
+                            halo_width=float(paint.get("text-halo-width", "0"))
+                        ),
+                        f_filter,
+                        layer_id_,
+                        z_filter
+                    ))
+                else:
+                    print(f"Layer {layer_id_} has no text rules")
+
             else:
                 print(f"Unsupported layer type {layer_type_}")
         return rules
@@ -121,29 +151,39 @@ class Parser:
             return nothing()
 
     def parse_line_cap(self, v) -> ContextModification:
-        if v == "butt":
-            return linecap(cairo.LINE_CAP_BUTT)
-        elif v == "square":
-            return linecap(cairo.LINE_CAP_SQUARE)
-        elif v == "round":
-            return linecap(cairo.LINE_CAP_ROUND)
+
+        mapping = {
+            "butt": cairo.LINE_CAP_BUTT,
+            "square": cairo.LINE_CAP_SQUARE,
+            "round": cairo.LINE_CAP_ROUND
+        }
+
+        if v in mapping:
+            return linecap(mapping[v])
         else:
             print(f"Unknown cap {v}")
             return nothing()
 
     def parse_line_join(self, v) -> ContextModification:
-        if v == "bevel":
-            return linejoin(cairo.LINE_JOIN_BEVEL)
-        elif v == "miter":
-            return linejoin(cairo.LINE_JOIN_MITER)
-        elif v == "round":
-            return linejoin(cairo.LINE_JOIN_ROUND)
+
+        mapping = {
+            "bevel": cairo.LINE_JOIN_BEVEL,
+            "miter": cairo.LINE_JOIN_MITER,
+            "round": cairo.LINE_JOIN_ROUND
+        }
+
+        if v in mapping:
+            return linejoin(mapping[v])
         else:
             print(f"Unknown join {v}")
             return nothing()
 
     def parse_line_dash(self, d):
         return linedash(*[v * 4.0 for v in d])
+
+    def parse_circle_paint(self, param: dict) -> ContextModification:
+        mods = []
+        return multiple(*mods)
 
     def parse_paint(self, param: dict) -> ContextModification:
 

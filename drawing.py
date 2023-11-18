@@ -155,6 +155,89 @@ class PolygonFeatureDrawing(FeatureDrawing):
             self.drawing(zoom, ctx)
 
 
+class TextFeatureDrawing(FeatureDrawing):
+    def __init__(self,
+                 font_name: str,
+                 field_name: str,
+                 text_anchor: str,
+                 text_colour: Colour,
+                 halo_colour: Colour,
+                 halo_width: float,
+                 ):
+        self.font = cairo.ToyFontFace(font_name, cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+        self.field_name = field_name
+        self.text_colour = text_colour
+        self.halo_colour = halo_colour
+        self.halo_size = halo_width
+        self.text_anchor = text_anchor
+
+    def draw(self, ctx: cairo.Context, zoom, feature):
+        geometry = feature["geometry"]
+        geometry_type_ = geometry["type"]
+
+        if geometry_type_ != "Point":
+            print(f"unsupported point feature geometry type {geometry_type_}")
+            return
+
+        coordinates = geometry["coordinates"]
+
+        properties = feature["properties"]
+
+        if self.field_name in properties:
+            text = properties[self.field_name]
+        else:
+            parts = self.field_name.split("_")
+            latin = f"{parts[0]}:latin"
+            if latin in properties:
+                text = properties[latin]
+            else:
+                print(f"Can't find {self.field_name} in {properties}")
+                text = "?"
+
+        with saved(ctx):
+            ctx.set_font_face(self.font)
+            ctx.set_font_size(150)
+
+            extents = ctx.text_extents(text)
+            if self.text_anchor == "center":
+                ctx.translate(-extents.width / 2, extents.height / 2)
+
+            if self.halo_size > 0:
+                scaled = ctx.get_scaled_font()
+                glyphs = scaled.text_to_glyphs(coordinates[0], coordinates[1], text)
+                ctx.glyph_path(glyphs[0])
+
+                ctx.set_line_width(self.halo_size * 10)
+                ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+                self.halo_colour.apply_to(ctx)
+                ctx.stroke()
+
+            ctx.move_to(coordinates[0], coordinates[1])
+            self.text_colour.apply_to(ctx)
+            ctx.show_text(text)
+
+
+class CircleFeatureDrawing(FeatureDrawing):
+    def __init__(self, drawing: Drawing):
+        self.drawing = drawing
+
+    def draw(self, ctx: cairo.Context, zoom, feature):
+        geometry = feature["geometry"]
+        geometry_type_ = geometry["type"]
+
+        if geometry_type_ != "Point":
+            print(f"unsupported point feature geometry type {geometry_type_}")
+            return
+
+        coordinates = geometry["coordinates"]
+
+        with saved(ctx):
+            Colour.hex("#ff0000").apply_to(ctx)
+            ctx.new_sub_path()
+            ctx.arc(coordinates[0], coordinates[1], 50, 0, math.tau)
+            ctx.fill()
+
+
 class LineFeatureDrawing(FeatureDrawing):
     def __init__(self, drawing: Drawing):
         self.drawing = drawing
@@ -170,7 +253,7 @@ class LineFeatureDrawing(FeatureDrawing):
         elif geometry_type_ == "Polygon":
             lines = geometry["coordinates"]
         else:
-            print(f"unsupported feature type {geometry_type_}")
+            print(f"unsupported line feature geometry type {geometry_type_}")
             return
 
         do_primitive(ctx, lines)

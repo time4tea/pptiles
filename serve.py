@@ -28,10 +28,11 @@ style = Parser().parse(p)
 @app.route("/<z:int>/<x:int>/<y:int>.png")
 def tile(z, x, y):
     xyz = XYZ(x, y, z)
-    surface = draw(style, xyz.z, TileData(reader.xyz(xyz)).get_message(), 4096)
+    surface = draw(style, xyz.z, TileData(reader.xyz(xyz)).get_message(), 512)
     out = BytesIO()
     surface.write_to_png(out)
     return bottle.HTTPResponse(out.getvalue(), content_type="image/png")
 
 
-bottle.run(host='0.0.0.0', port=8000)
+if __name__ == "__main__":
+    bottle.run(host='0.0.0.0', port=8000)
