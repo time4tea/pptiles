@@ -73,14 +73,6 @@ def linewidthexp(base: float, stops: List[Tuple[int, int]]) -> ContextModificati
     return lambda z, ctx: ctx.set_line_width(f(z))
 
 
-def linecap(cap: cairo.LineCap) -> ContextModification:
-    return lambda z, ctx: ctx.set_line_cap(cap)
-
-
-def linejoin(join: cairo.LineJoin) -> ContextModification:
-    return lambda z, ctx: ctx.set_line_join(join)
-
-
 def linedash(*w: float) -> ContextModification:
     return lambda z, ctx: ctx.set_dash(w)
 
@@ -134,7 +126,6 @@ def saved(ctx: cairo.Context):
         ctx.restore()
 
 
-
 def do_primitive(ctx, lines_or_polys):
     for line in lines_or_polys:
         for i, xy in enumerate(line):
@@ -142,6 +133,8 @@ def do_primitive(ctx, lines_or_polys):
                 ctx.move_to(xy[0], 4096 - xy[1])
             else:
                 ctx.line_to(xy[0], 4096 - xy[1])
+
+
 class PolygonFeatureDrawing(FeatureDrawing):
     def __init__(self, drawing: Drawing):
         self.drawing = drawing
